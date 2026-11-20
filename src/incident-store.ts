@@ -85,6 +85,23 @@ export class IncidentStore {
         source TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`;
+    this.sql`
+      CREATE TABLE IF NOT EXISTS alerts (
+        key TEXT PRIMARY KEY,
+        incident_id TEXT NOT NULL
+      )`;
+  }
+
+  /** The incident an alert already opened, so a re-fire does not open another. */
+  incidentForAlert(key: string): string | undefined {
+    const [row] = this.sql<{ incident_id: string }>`
+      SELECT incident_id FROM alerts WHERE key = ${key}`;
+    return row?.incident_id;
+  }
+
+  linkAlert(key: string, incidentId: string): void {
+    this.sql`
+      INSERT OR REPLACE INTO alerts (key, incident_id) VALUES (${key}, ${incidentId})`;
   }
 
   /** Returns the new entry, or undefined if the incident does not exist. */

@@ -9,6 +9,9 @@
     "cloudflare"
   ],
   "license": "MIT",
+  "bin": {
+    "kubepilot": "bin/kubepilot.mjs"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite dev",
@@ -17,8 +20,10 @@
     "types": "wrangler types env.d.ts",
     "format": "oxfmt --write .",
     "lint": "oxlint src/",
-    "check": "oxfmt --check . && oxlint src/ && tsc && vitest run",
-    "test": "vitest run"
+    "check": "oxfmt --check . && oxlint src/ eval/ && tsc && vitest run",
+    "test": "vitest run",
+    "token": "node scripts/token.mjs",
+    "eval": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
     "@cloudflare/ai-chat": "^0.9.3",

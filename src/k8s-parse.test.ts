@@ -113,4 +113,14 @@ describe("parseK8sOutput", () => {
     for (const { text } of FIXTURES)
       expect(() => parseK8sOutput(text)).not.toThrow();
   });
+
+  it("does not call exit code 137 an OOM kill without the OOMKilled reason", () => {
+    // SIGKILL (137) also comes from failed liveness probes and manual kills.
+    const text =
+      "Name: p-7d9f8b6c5-x2k4p\nNamespace: n\nContainers:\n  app:\n    State: Waiting\n      Reason: CrashLoopBackOff\n    Last State: Terminated\n      Reason: Error\n      Exit Code: 137\n";
+    const f = parseK8sOutput(text);
+    expect(f.exitCodes).toEqual([137]);
+    expect(f.signals).not.toContain("OOMKilled");
+    expect(f.signals[0]).toBe("CrashLoopBackOff");
+  });
 });

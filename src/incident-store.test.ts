@@ -87,4 +87,13 @@ describe("IncidentStore", () => {
       expect(store.timeline(b.id)).toEqual([]);
     });
   });
+
+  describe("alert links", () => {
+    it("remembers which incident an alert opened", () => {
+      const { id } = store.create(input);
+      expect(store.incidentForAlert("fp-1")).toBeUndefined();
+      store.linkAlert("fp-1", id);
+      expect(store.incidentForAlert("fp-1")).toBe(id);
+    });
+  });
 });

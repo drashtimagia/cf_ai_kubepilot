@@ -6,7 +6,8 @@ import {
   type Classification
 } from "./diagnosis";
 import { parseK8sOutput, type K8sFacts } from "./k8s-parse";
-import { lookupRunbook, type Runbook } from "./runbooks";
+import { fillPlaceholders } from "./placeholders";
+import { lookupRunbook, RUNBOOKS, type Runbook } from "./runbooks";
 import type {
   DiagnosisProgress,
   DiagnosisResult,
@@ -24,6 +25,10 @@ export interface DiagnosisParams {
   input: string;
   /** Cluster facts the user stated, as one line. */
   clusterSummary: string;
+  /** Namespace the user told us about, used to fill command placeholders. */
+  namespace?: string;
+  /** Pause before keeping cluster-changing suggestions until a human approves. */
+  requireApproval?: boolean;
 }
 
 export interface PastIncident {
@@ -38,6 +43,8 @@ export interface DiagnosisDeps {
   ask(system: string, prompt: string): Promise<string>;
   /** Past incidents sharing any of these signals. */
   similar(signals: string[]): Promise<PastIncident[]>;
+  /** Resolves true only when a human approved. Rejection or timeout is false. */
+  approve(): Promise<boolean>;
 }
 
 export interface StepRunner {
@@ -73,7 +80,7 @@ export function classifyPrompt(
   return {
     system: `You are a Kubernetes SRE classifying an incident from evidence.
 Reply with a JSON object: {"category": string, "severity": "low"|"medium"|"high"|"critical", "summary": string}.
-"category" is one of the detected signals, or "Other". "summary" is one sentence naming only what the evidence shows.`,
+"category" is one of: ${[...RUNBOOKS.map((r) => r.id), "Other"].join(", ")}. "summary" is one sentence naming only what the evidence shows.`,
     prompt: `Cluster facts from the user: ${clusterSummary || "none stated"}
 Detected signals: ${facts.signals.join(", ") || "none"}
 Parsed facts: ${JSON.stringify({ kind: facts.kind, pods: facts.pods, events: facts.events.slice(0, 6), logErrors: facts.logErrors })}
@@ -101,7 +108,7 @@ export function hypothesesPrompt(
   return {
     system: `You are a Kubernetes SRE. List up to 4 hypotheses for the root cause, most likely first.
 Reply with a JSON object: {"hypotheses": [{"title": string, "confidence": "low"|"medium"|"high", "why": string, "command": string}]}.
-Each "command" is ONE kubectl command that would confirm or rule out that hypothesis. Prefer read-only commands. Use placeholders like <pod> when a name is unknown. These are hypotheses, not facts: do not state cluster details that are not in the input.`,
+Each "command" is ONE kubectl command that would confirm or rule out that hypothesis. Prefer read-only commands. Use placeholders like <pod> when a name is unknown. Rank the causes the evidence directly supports first, and leave out a known cause that the evidence contradicts or does not support. These are hypotheses, not facts: do not state cluster details that are not in the input.`,
     prompt: `Category: ${classification.category}
 Summary: ${classification.summary}
 Cluster facts from the user: ${ctx.clusterSummary || "none stated"}
@@ -125,6 +132,17 @@ export function rankHypotheses(
     .map(({ h }) => ({ ...h, readOnly: isReadOnly(h.command) }));
 }
 
+/** True when any suggestion would change the cluster. */
+export const needsReview = (hypotheses: Hypothesis[]): boolean =>
+  hypotheses.some((h) => !h.readOnly);
+
+/** Without approval, only read-only suggestions are kept. */
+export const applyReview = (
+  hypotheses: Hypothesis[],
+  approved: boolean
+): Hypothesis[] =>
+  approved ? hypotheses : hypotheses.filter((h) => h.readOnly);
+
 export interface DiagnosisRun {
   deps: DiagnosisDeps;
   steps: StepRunner;
@@ -133,7 +151,7 @@ export interface DiagnosisRun {
 
 export async function runDiagnosisSteps(
   { deps, steps, report }: DiagnosisRun,
-  { input, clusterSummary }: DiagnosisParams
+  { input, clusterSummary, namespace, requireApproval }: DiagnosisParams
 ): Promise<Omit<DiagnosisResult, "incidentId">> {
   await report({ step: "parse", status: "running" });
   const facts = await steps.run("parse", false, async () =>
@@ -179,7 +197,13 @@ export async function runDiagnosisSteps(
       await deps.ask(system, prompt),
       hypothesesSchema
     );
-    return rankHypotheses(hypotheses);
+    // Fill <ns>, <pod> and friends from the evidence, then classify read-only.
+    return rankHypotheses(
+      hypotheses.map((h) => ({
+        ...h,
+        command: fillPlaceholders(h.command, facts, namespace)
+      }))
+    );
   });
   await report({
     step: "hypotheses",
@@ -187,12 +211,36 @@ export async function runDiagnosisSteps(
     message: `${hypotheses.length} ranked`
   });
 
+  let kept = hypotheses;
+  if (requireApproval && needsReview(hypotheses)) {
+    const risky = hypotheses.filter((h) => !h.readOnly).length;
+    await report({
+      step: "review",
+      status: "waiting",
+      message: `${risky} cluster-changing suggestion${risky === 1 ? "" : "s"} need your approval`
+    });
+    const approved = await deps.approve();
+    kept = applyReview(hypotheses, approved);
+    await report({
+      step: "review",
+      status: "complete",
+      message: approved ? "approved" : `not approved, ${risky} withheld`
+    });
+  } else {
+    await report({
+      step: "review",
+      status: "complete",
+      message: requireApproval ? "nothing to review" : "approval not required"
+    });
+  }
+
   return {
     category: classification.category,
     severity: classification.severity,
     summary: classification.summary,
     signals: facts.signals,
-    hypotheses
+    hypotheses: kept,
+    withheld: hypotheses.length - kept.length
   };
 }
 

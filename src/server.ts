@@ -1,4 +1,15 @@
 import { callable, routeAgentRequest } from "agents";
+import {
+  CLUSTER_ID,
+  MAX_NEW_INCIDENTS,
+  alertKey,
+  alertSeverity,
+  alertTitle,
+  alertToEvidence,
+  parseApiPath,
+  type Alert
+} from "./alerts";
+import { handleApi } from "./api";
 import { AIChatAgent, type OnChatMessageOptions } from "@cloudflare/ai-chat";
 import {
   convertToModelMessages,
@@ -95,18 +106,20 @@ export class KubePilotAgent extends AIChatAgent<Env, KubePilotState> {
     this.setState({ ...this.state, diagnosis });
   }
 
-  private async beginDiagnosis(): Promise<
-    { started: true } | { error: string }
-  > {
+  private async beginDiagnosis(
+    opts: { input?: string; requireApproval?: boolean } = {}
+  ): Promise<{ started: true } | { error: string }> {
     if (this.state.diagnosis?.status === "running") {
       return { error: "A diagnosis is already running." };
     }
-    const input = truncateMiddle(evidenceText(this.messages));
+    const input = truncateMiddle(opts.input ?? evidenceText(this.messages));
     if (!input) return { error: "Paste some kubectl output or logs first." };
 
     const { cluster } = this.state;
     const params: DiagnosisParams = {
       input,
+      namespace: cluster.namespace,
+      requireApproval: opts.requireApproval ?? false,
       clusterSummary: [
         cluster.name,
         cluster.namespace,
@@ -142,8 +155,86 @@ export class KubePilotAgent extends AIChatAgent<Env, KubePilotState> {
 
   /** The UI's "Run diagnosis" button. */
   @callable()
-  async runDiagnosisNow() {
-    return this.beginDiagnosis();
+  async runDiagnosisNow(requireApproval = false) {
+    return this.beginDiagnosis({ requireApproval });
+  }
+
+  /** Approve or reject the cluster-changing suggestions a diagnosis is waiting on. */
+  @callable()
+  async reviewChanges(approve: boolean) {
+    const d = this.state.diagnosis;
+    const waiting = d?.steps.some((s) => s.status === "waiting");
+    if (!d || d.status !== "running" || !waiting) {
+      return { error: "Nothing is waiting for review." };
+    }
+    if (approve) await this.approveWorkflow(d.id);
+    else await this.rejectWorkflow(d.id, { reason: "Rejected by user" });
+    return { ok: true };
+  }
+
+  /** API: start a diagnosis on text sent by the CLI. */
+  async startDiagnosisWith(input: string, requireApproval = false) {
+    return this.beginDiagnosis({ input, requireApproval });
+  }
+
+  /** API: the latest diagnosis, for the CLI to poll. */
+  async currentDiagnosis(): Promise<Diagnosis | null> {
+    return this.state.diagnosis;
+  }
+
+  /**
+   * API: Alertmanager webhook. Each new firing alert opens an incident with
+   * the alert as evidence, and the first one starts a diagnosis. Re-fires are
+   * deduplicated and resolved alerts mark their incident mitigated.
+   */
+  async ingestAlerts(alerts: Alert[]) {
+    const created: Array<{ id: string; evidence: string }> = [];
+    let duplicates = 0;
+    let resolved = 0;
+    for (const alert of alerts) {
+      const key = alertKey(alert);
+      const existing = this.incidents.incidentForAlert(key);
+      if (alert.status === "resolved") {
+        if (existing) {
+          this.incidents.update(existing, "mitigated");
+          this.incidents.addEntry(
+            existing,
+            "note",
+            "Alertmanager reported this alert resolved.",
+            "alert"
+          );
+          resolved++;
+        }
+        continue;
+      }
+      if (existing) {
+        duplicates++;
+        continue;
+      }
+      if (created.length >= MAX_NEW_INCIDENTS) continue;
+      const evidence = alertToEvidence(alert);
+      const incident = this.incidents.create({
+        title: alertTitle(alert),
+        severity: alertSeverity(alert),
+        summary: alert.annotations?.summary ?? evidence.split("\n")[0] ?? "",
+        signals: parseK8sOutput(evidence).signals
+      });
+      this.incidents.linkAlert(key, incident.id);
+      this.incidents.addEntry(incident.id, "evidence", evidence, "alert");
+      created.push({ id: incident.id, evidence });
+    }
+
+    const first = created[0];
+    this.syncMemory(first ? { activeIncidentId: first.id } : {});
+    const started = first
+      ? "started" in (await this.beginDiagnosis({ input: first.evidence }))
+      : false;
+    return {
+      created: created.map((c) => c.id),
+      duplicates,
+      resolved,
+      diagnosisStarted: started
+    };
   }
 
   /** Lets the UI switch the active incident. */
@@ -442,11 +533,24 @@ export class KubePilotAgent extends AIChatAgent<Env, KubePilotState> {
   }
 }
 
+const checkClusterName = (_req: Request, lobby: { name: string }) =>
+  CLUSTER_ID.test(lobby.name)
+    ? undefined
+    : new Response("Invalid cluster id", { status: 400 });
+
 export default {
   async fetch(request: Request, env: Env) {
+    const { pathname } = new URL(request.url);
+    const route = parseApiPath(pathname);
+    if (route) return handleApi(request, env, route);
+    if (pathname.startsWith("/api/")) {
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
     return (
-      (await routeAgentRequest(request, env)) ||
-      new Response("Not found", { status: 404 })
+      (await routeAgentRequest(request, env, {
+        onBeforeConnect: checkClusterName,
+        onBeforeRequest: checkClusterName
+      })) || new Response("Not found", { status: 404 })
     );
   }
 } satisfies ExportedHandler<Env>;

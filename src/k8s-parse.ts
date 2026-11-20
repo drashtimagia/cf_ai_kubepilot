@@ -35,7 +35,7 @@ export interface EventFacts {
 }
 
 export interface K8sFacts {
-  kind: "describe" | "get-pods" | "logs" | "unknown";
+  kind: "describe" | "get-pods" | "logs" | "alert" | "unknown";
   pods: PodFacts[];
   events: EventFacts[];
   /** Known failure signals found in the text, highest priority first. */
@@ -47,12 +47,18 @@ export interface K8sFacts {
 
 /** Failure signals detectable from text, in priority order. Names match runbook ids. */
 const SIGNALS: Array<{ name: string; pattern: RegExp }> = [
-  { name: "OOMKilled", pattern: /OOMKilled|Exit Code:\s*137/i },
+  {
+    name: "OOMKilled",
+    pattern: /OOMKilled|ContainerOOM|OOMKilling/i
+  },
   {
     name: "CrashLoopBackOff",
-    pattern: /CrashLoopBackOff|Back-off restarting/i
+    pattern: /CrashLoopBackOff|Back-off restarting|PodCrashLooping/i
   },
-  { name: "ImagePullBackOff", pattern: /ImagePullBackOff|ErrImagePull/i },
+  {
+    name: "ImagePullBackOff",
+    pattern: /ImagePullBackOff|ErrImagePull|ImagePull/i
+  },
   {
     name: "FailedScheduling",
     pattern: /FailedScheduling|Insufficient (cpu|memory)/i
@@ -67,7 +73,7 @@ const SIGNALS: Array<{ name: string; pattern: RegExp }> = [
     pattern: /(Readiness|Liveness|Startup) probe failed/i
   },
   { name: "FailedMount", pattern: /FailedMount|FailedAttachVolume/i },
-  { name: "NodeNotReady", pattern: /NodeNotReady|\bNotReady\b/ }
+  { name: "NodeNotReady", pattern: /NodeNotReady|\bNotReady\b|NodeUnreachable/ }
 ];
 
 const EVENT_ROW = /^\s*(Normal|Warning)\s+(\S+)\s+(.+?)\s{2,}\S+\s+(.*\S)\s*$/;
@@ -184,6 +190,17 @@ function parseLogErrors(text: string): string[] {
     .slice(0, 5);
 }
 
+/** `key=value` pairs from the first line of an alert rendered by alertToEvidence. */
+function parseAlertLabels(text: string): Record<string, string> {
+  const line = text.split("\n")[0] ?? "";
+  return Object.fromEntries(
+    [...line.matchAll(/\b([a-z_]+)=(\S+)/gi)].map((m) => [
+      m[1] ?? "",
+      m[2] ?? ""
+    ])
+  );
+}
+
 export function parseK8sOutput(text: string): K8sFacts {
   const facts: K8sFacts = {
     kind: "unknown",
@@ -207,6 +224,20 @@ export function parseK8sOutput(text: string): K8sFacts {
   } else if (/^(NAMESPACE\s+)?NAME\s+READY\s+STATUS/m.test(text)) {
     facts.kind = "get-pods";
     facts.pods = parseGetPods(text);
+  } else if (/^Alertmanager alert/m.test(text)) {
+    // The labels name the pod, namespace, node and container directly.
+    const labels = parseAlertLabels(text);
+    facts.kind = "alert";
+    if (labels.pod) {
+      facts.pods = [
+        {
+          name: labels.pod,
+          namespace: labels.namespace,
+          node: labels.node,
+          containers: labels.container ? [{ name: labels.container }] : []
+        }
+      ];
+    }
   } else if (
     /\d{4}-\d{2}-\d{2}T|\b(ERROR|FATAL|WARN|INFO)\b|panic:/.test(text)
   ) {

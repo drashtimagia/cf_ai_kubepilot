@@ -3,6 +3,7 @@ import {
   CheckCircleIcon,
   CircleDashedIcon,
   CircleNotchIcon,
+  HandPalmIcon,
   PlayIcon,
   WarningCircleIcon
 } from "@phosphor-icons/react";
@@ -54,6 +55,10 @@ function StepIcon({ status }: { status: StepStatus }) {
     return (
       <CheckCircleIcon size={16} weight="fill" className="text-kumo-success" />
     );
+  if (status === "waiting")
+    return (
+      <HandPalmIcon size={16} weight="fill" className="text-kumo-warning" />
+    );
   if (status === "running")
     return (
       <CircleNotchIcon size={16} className="animate-spin text-kumo-default" />
@@ -68,13 +73,20 @@ function StepIcon({ status }: { status: StepStatus }) {
 function DiagnosisCard({
   diagnosis,
   canRun,
-  onRun
+  onRun,
+  requireApproval,
+  onRequireApproval,
+  onReview
 }: {
   diagnosis: Diagnosis | null;
   canRun: boolean;
   onRun: () => void;
+  requireApproval: boolean;
+  onRequireApproval: (value: boolean) => void;
+  onReview: (approve: boolean) => void;
 }) {
   const running = diagnosis?.status === "running";
+  const waiting = diagnosis?.steps.find((s) => s.status === "waiting");
   return (
     <Section title="Diagnosis workflow">
       <Button
@@ -86,10 +98,39 @@ function DiagnosisCard({
       >
         {running ? "Running…" : diagnosis ? "Run again" : "Run diagnosis"}
       </Button>
+      <label className="flex items-center gap-2 text-xs text-kumo-subtle">
+        <input
+          type="checkbox"
+          checked={requireApproval}
+          onChange={(e) => onRequireApproval(e.target.checked)}
+          disabled={running}
+        />
+        Ask me before keeping cluster-changing suggestions
+      </label>
       {!diagnosis && (
         <Empty>
           Paste evidence or pick a sample, then run a multi-step diagnosis.
         </Empty>
+      )}
+      {waiting && (
+        <div className="rounded-lg border border-kumo-warning p-2 space-y-2">
+          <div className="text-xs text-kumo-default">
+            {waiting.message}. The workflow is paused until you decide. After 10
+            minutes it keeps only the read-only steps.
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="primary" onClick={() => onReview(true)}>
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => onReview(false)}
+            >
+              Reject
+            </Button>
+          </div>
+        </div>
       )}
       {diagnosis && (
         <ol className="space-y-1.5">
@@ -132,6 +173,12 @@ function DiagnosisCard({
           <Text size="xs" variant="secondary">
             {diagnosis.result.summary}
           </Text>
+          {diagnosis.result.withheld > 0 && (
+            <Text size="xs" variant="secondary">
+              {diagnosis.result.withheld} cluster-changing suggestion(s)
+              withheld.
+            </Text>
+          )}
           <Text size="xs" variant="secondary">
             Ranked hypotheses (AI guesses, not facts):
           </Text>
@@ -166,6 +213,38 @@ function DiagnosisCard({
           </ol>
         </div>
       )}
+    </Section>
+  );
+}
+
+/** Which agent this browser uses, plus the machine endpoints for it. */
+function WorkspaceCard({ clusterId }: { clusterId: string }) {
+  const origin = window.location.origin;
+  const link = `${origin}/?cluster=${clusterId}`;
+  const webhook = `${origin}/api/clusters/${clusterId}/alerts`;
+  const curl = `kubectl describe pod <pod> | KUBEPILOT_URL=${origin} KUBEPILOT_CLUSTER=${clusterId} KUBEPILOT_TOKEN=<token> npx kubepilot`;
+  return (
+    <Section title="Workspace">
+      <Empty>
+        Your private workspace is <code className="font-mono">{clusterId}</code>
+        . Open the link on another device, or share it, to use the same memory.
+      </Empty>
+      <div className="flex items-center justify-between gap-2 rounded-md bg-kumo-control p-2 font-mono text-[11px] break-all">
+        {link}
+        <CopyButton text={link} />
+      </div>
+      <Empty>
+        Alertmanager webhook (bearer token required; the operator makes one with
+        `npm run token -- {clusterId}`):
+      </Empty>
+      <div className="flex items-center justify-between gap-2 rounded-md bg-kumo-control p-2 font-mono text-[11px] break-all">
+        {webhook}
+        <CopyButton text={webhook} />
+      </div>
+      <div className="flex items-center justify-between gap-2 rounded-md bg-kumo-control p-2 font-mono text-[11px] break-all">
+        {curl}
+        <CopyButton text={curl} label="Copy CLI" />
+      </div>
     </Section>
   );
 }
@@ -244,12 +323,20 @@ export function SidePanel({
   state,
   canRun,
   onRun,
-  onSelectIncident
+  onSelectIncident,
+  clusterId,
+  requireApproval,
+  onRequireApproval,
+  onReview
 }: {
   state: KubePilotState | undefined;
   canRun: boolean;
   onRun: () => void;
   onSelectIncident: (id: string) => void;
+  clusterId: string;
+  requireApproval: boolean;
+  onRequireApproval: (value: boolean) => void;
+  onReview: (approve: boolean) => void;
 }) {
   if (!state) {
     return (
@@ -274,7 +361,14 @@ export function SidePanel({
 
   return (
     <div className="flex flex-col gap-5 p-4">
-      <DiagnosisCard diagnosis={diagnosis} canRun={canRun} onRun={onRun} />
+      <DiagnosisCard
+        diagnosis={diagnosis}
+        canRun={canRun}
+        onRun={onRun}
+        requireApproval={requireApproval}
+        onRequireApproval={onRequireApproval}
+        onReview={onReview}
+      />
 
       <Section title="Cluster facts">
         {facts.length === 0 && cluster.notes.length === 0 ? (
@@ -318,6 +412,8 @@ export function SidePanel({
       <Section title="Active incident timeline">
         <Timeline entries={timeline} />
       </Section>
+
+      <WorkspaceCard clusterId={clusterId} />
     </div>
   );
 }

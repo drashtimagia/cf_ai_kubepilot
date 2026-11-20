@@ -29,6 +29,7 @@ import {
 import { flagCommandBlocks } from "./commands";
 import { CodeBlock } from "./copy-button";
 import { fixture } from "./fixtures";
+import { getClusterId } from "./cluster-id";
 import { SidePanel } from "./side-panel";
 import type { KubePilotState } from "./types";
 import type { KubePilotAgent } from "./server";
@@ -76,8 +77,12 @@ function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [clusterId] = useState(getClusterId);
+  const [requireApproval, setRequireApproval] = useState(false);
+
   const agent = useAgent<KubePilotAgent, KubePilotState>({
     agent: "KubePilotAgent",
+    name: clusterId,
     onOpen: useCallback(() => setConnected(true), []),
     onClose: useCallback(() => setConnected(false), []),
     onError: useCallback(
@@ -124,14 +129,21 @@ function Chat() {
   const runDiagnosis = useCallback(async () => {
     setNotice(null);
     try {
-      const r = (await agent.call("runDiagnosisNow")) as { error?: string };
+      const r = (await agent.call("runDiagnosisNow", [requireApproval])) as {
+        error?: string;
+      };
       if (r.error) setNotice(r.error);
     } catch (e) {
       setNotice(
         e instanceof Error ? e.message : "Could not start the diagnosis."
       );
     }
-  }, [agent]);
+  }, [agent, requireApproval]);
+
+  const reviewChanges = useCallback(
+    (approve: boolean) => void agent.call("reviewChanges", [approve]),
+    [agent]
+  );
 
   const selectIncident = useCallback(
     (id: string) => void agent.call("selectIncident", [id]),
@@ -150,6 +162,10 @@ function Chat() {
       canRun={canRun}
       onRun={runDiagnosis}
       onSelectIncident={selectIncident}
+      clusterId={clusterId}
+      requireApproval={requireApproval}
+      onRequireApproval={setRequireApproval}
+      onReview={reviewChanges}
     />
   );
 

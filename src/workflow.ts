@@ -1,14 +1,12 @@
 import { AgentWorkflow } from "agents/workflows";
 import type { AgentWorkflowEvent, AgentWorkflowStep } from "agents/workflows";
-import { generateText } from "ai";
-import { createWorkersAI } from "workers-ai-provider";
 import {
   runDiagnosisSteps,
   type DiagnosisDeps,
   type DiagnosisParams,
   type StepRunner
 } from "./diagnosis-steps";
-import { MAX_OUTPUT_TOKENS, MODEL } from "./model";
+import { askModel } from "./llm";
 import type { KubePilotAgent } from "./server";
 import type { DiagnosisProgress } from "./types";
 
@@ -31,23 +29,18 @@ export class DiagnosisWorkflow extends AgentWorkflow<
     event: AgentWorkflowEvent<DiagnosisParams>,
     step: AgentWorkflowStep
   ) {
-    const workersai = createWorkersAI({ binding: this.env.AI });
-
     const deps: DiagnosisDeps = {
-      ask: async (system, prompt) => {
-        const { text, finishReason } = await generateText({
-          model: workersai(MODEL),
-          system: `${system}\nRespond with ONLY the JSON object, no prose, no code fences.`,
-          prompt,
-          temperature: 0.2,
-          maxOutputTokens: MAX_OUTPUT_TOKENS
-        });
-        if (finishReason === "length") {
-          throw new Error("Model output was cut off at the token limit");
+      ask: (system, prompt) => askModel(this.env.AI, system, prompt),
+      similar: (signals) => this.agent.similarIncidents(signals),
+      approve: async () => {
+        try {
+          await this.waitForApproval(step, { timeout: "10 minutes" });
+          return true;
+        } catch {
+          // Rejected or timed out: keep only the read-only suggestions.
+          return false;
         }
-        return text;
-      },
-      similar: (signals) => this.agent.similarIncidents(signals)
+      }
     };
 
     // step.do wants provably serializable results; ours are plain JSON.

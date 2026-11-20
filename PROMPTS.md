@@ -148,3 +148,36 @@ Every prompt given to the AI coding assistant while building KubePilot, verbatim
 > https://cf-ai-kubepilot.drashtimagia02.workers.dev/ add this to my portfolio as projects on vercel
 
 **What changed:** No change to this repo. Added a KubePilot entry to `data/projects.ts` in the separate `portfolio-drashti` repo and pushed it, which triggered the Vercel deploy.
+
+## Prompt 15
+
+> Add an evaluation harness and publish the numbers
+>
+> * What: build 25 to 30 labelled incident scenarios (extending src/fixtures.ts) with the known root cause for each. A script runs each one through the real diagnosis workflow and reports:
+>    * how often the correct cause is the top hypothesis, and how often it is in the top three;
+>    * how often the suggested confirm command is read-only when it should be;
+>    * how often a hypothesis states a cluster fact that isn't in the input (the hallucination rate).
+> * Why it stands out: almost no take-home reports measured accuracy. It also backs your "never makes up facts" claim with a number instead of a promise. The README would say something like "top-3 correct on 24 of 30".
+> * Effort: about a day. The pure step logic is already testable.
+>
+> 2. Make it proactive, and fix the shared-agent weakness
+>
+> * What: add an Alertmanager or Prometheus webhook endpoint. An incoming alert creates an incident and starts the diagnosis workflow automatically. Use one Durable Object per cluster instead of the single `default` one.
+> * Why it stands out: today it only reacts to pastes. Reacting to alerts is the real platform use case, and one Durable Object per cluster is a better architecture story. It also resolves the top weakness I listed, that everyone shares one agent.
+> * Effort: one to two days, including simple auth, such as a per-cluster token.
+>
+> 3. Add a way to pipe real cluster output in
+>
+> * What: a small `kubepilot` CLI or script, so `kubectl describe pod x | kubepilot` posts to an API endpoint and prints the diagnosis. Keep it read-only.
+> * Why it stands out: it feels like a tool an engineer would use, not a web demo.
+> * Effort: a few hours once the endpoint from step 2 exists.
+>
+> Smaller polish that adds credibility
+>
+> * Fill in placeholders: suggested commands should use the real namespace and pod from the parsed facts instead of `<ns>`. That is a visible flaw today.
+> * Show it working: add a 60-second screen recording at the top of the README and a short "design decisions" section.
+> * Use a Workflows approval step: `waitForApproval` before any cluster-changing suggestion would show off a Cloudflare primitive. It's lower priority, because KubePilot never runs commands.
+>
+> do all
+
+**What changed:** Added a live evaluation harness (28 labelled incidents, `npm run eval`, results in `eval/RESULTS.md`: correct cause in the top 3 for 26/28, 0/111 hypotheses with an invented identifier). The eval exposed a parser bug (exit 137 was always called OOMKilled), fixed. Added one agent per cluster with per-cluster tokens, an Alertmanager webhook that opens incidents and starts diagnoses, and a `kubepilot` CLI. Suggested commands now get `<ns>`/`<pod>` filled from the evidence, with an `ns/pod` normalisation found by testing the webhook. Added an opt-in `waitForApproval` step (approve and reject both exercised live, by temporarily forcing the pause). README gained evaluation, alerts and CLI, and design decisions sections. Not deployed. I cannot record a screen video, so that item is not done.

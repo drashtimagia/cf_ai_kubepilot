@@ -1,0 +1,1049 @@
+{
+  "meta": {
+    "model": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "date": "2026-11-20"
+  },
+  "summary": {
+    "scenarios": 28,
+    "errors": 0,
+    "categoryCorrect": 26,
+    "top1": 21,
+    "top3": 26,
+    "commands": 111,
+    "readOnlyCommands": 110,
+    "hypotheses": 111,
+    "hypothesesWithUngrounded": 0,
+    "scenariosWithUngrounded": 0
+  },
+  "results": [
+    {
+      "id": "crash-db-refused",
+      "title": "App cannot reach its database",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": 2,
+      "hypotheses": [
+        {
+          "title": "Application error on startup",
+          "why": "The container is crashing and restarting, which is a common symptom of application errors on startup",
+          "command": "kubectl logs orders-api-6d5f7c8b9-k4m2p --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Unreachable database dependency",
+          "why": "The error message mentions a failed connection to the database, which suggests a dependency issue",
+          "command": "kubectl describe pod orders-api-6d5f7c8b9-k4m2p",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "A wrong command or args could cause the container to crash, but it's less likely given the database connection error",
+          "command": "kubectl get pod orders-api-6d5f7c8b9-k4m2p -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe",
+          "why": "There's no indication that the liveness probe is the cause of the crash, but it's still possible",
+          "command": "kubectl get events --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-missing-env",
+      "title": "Required env var missing",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Missing environment variable",
+          "why": "The error message indicates that the STRIPE_API_KEY environment variable is not set",
+          "command": "kubectl describe pod billing-5b9c7d6f4-q8w2n -n billing",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Application error on startup",
+          "why": "The CrashLoopBackOff state can be caused by an application error on startup",
+          "command": "kubectl logs billing-5b9c7d6f4-q8w2n -n billing --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "The pod spec may contain incorrect commands or arguments",
+          "command": "kubectl get pod billing-5b9c7d6f4-q8w2n -n billing -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe",
+          "why": "A failing liveness probe can cause a container to be restarted",
+          "command": "kubectl get events -n billing --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-bad-entrypoint",
+      "title": "Entrypoint binary not found",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": null,
+      "hypotheses": [
+        {
+          "title": "Application error on startup",
+          "why": "Exit code 127 often indicates a command not found, which could be due to a bad config, missing env var or secret, or unreachable dependency",
+          "command": "kubectl logs worker-7c8d9f5b6-z3x9v -n jobs --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "A wrong command or args could cause the container to fail to start",
+          "command": "kubectl describe pod worker-7c8d9f5b6-z3x9v -n jobs",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe",
+          "why": "There is no indication that a liveness probe is configured or failing",
+          "command": "kubectl describe pod worker-7c8d9f5b6-z3x9v -n jobs",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "OOMKilled",
+          "why": "There is no indication of an OOMKilled error, and exit code 127 does not typically indicate an OOM issue",
+          "command": "kubectl get events -n jobs --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-exec-format",
+      "title": "Wrong CPU architecture image",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Application error on startup",
+          "why": "The exec format error suggests the container is unable to start due to an issue with the application binary or its dependencies",
+          "command": "kubectl logs edge-proxy-5f6b8c7d9-r2t5y -n edge --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "An incorrect command or argument in the pod spec could lead to an exec format error",
+          "command": "kubectl describe pod edge-proxy-5f6b8c7d9-r2t5y -n edge",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe",
+          "why": "While a failing liveness probe could cause a container to restart, it's less likely to cause an exec format error",
+          "command": "kubectl describe pod edge-proxy-5f6b8c7d9-r2t5y -n edge",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "OOMKilled",
+          "why": "OOMKilled would typically produce an OOMKilled event, which is not mentioned in the summary",
+          "command": "kubectl get events -n edge --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-nil-panic",
+      "title": "Go nil pointer panic",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": null,
+      "hypotheses": [
+        {
+          "title": "Application error on startup",
+          "why": "The pod is experiencing a CrashLoopBackOff due to a runtime error, which is a common symptom of application errors on startup",
+          "command": "kubectl logs search-4c5d6e7f8-h6j7k -n search --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "A wrong command or args in the pod spec could cause the container to crash or fail to start",
+          "command": "kubectl describe pod search-4c5d6e7f8-h6j7k -n search",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe",
+          "why": "A failing liveness probe could cause the container to be killed and restarted, leading to a CrashLoopBackOff",
+          "command": "kubectl describe pod search-4c5d6e7f8-h6j7k -n search",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "OOMKilled",
+          "why": "While OOMKilled is a known cause of pod crashes, there is no evidence to suggest it is the cause in this case",
+          "command": "kubectl get events -n search --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-liveness",
+      "title": "Liveness probe kills a slow starter",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": 2,
+      "hypotheses": [
+        {
+          "title": "Application error on startup",
+          "why": "The pod is in a CrashLoopBackOff state with multiple restarts, which is consistent with the application failing to start correctly",
+          "command": "kubectl logs reports-8d7c6b5a4-n9m8l -n analytics --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe killing a healthy-but-slow container",
+          "why": "The liveness probe failed, which could be due to the container being slow to respond rather than actually unhealthy",
+          "command": "kubectl describe pod reports-8d7c6b5a4-n9m8l -n analytics",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "A misconfigured command or args could cause the container to fail to start or run correctly",
+          "command": "kubectl get pod reports-8d7c6b5a4-n9m8l -n analytics -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "OOMKilled",
+          "why": "While possible, there is no direct evidence to suggest the container is being OOMKilled, and other causes are more likely",
+          "command": "kubectl describe pod reports-8d7c6b5a4-n9m8l -n analytics",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-permission-denied",
+      "title": "Cannot write to its data directory",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Application error on startup due to missing permissions",
+          "why": "The error message indicates a permission denied error when trying to open /data/cache.db, suggesting that the application is unable to access the required resource.",
+          "command": "kubectl logs cache-3b4c5d6e7-v1b2n -n platform --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "A wrong command or args in the pod spec could lead to the application attempting to access a resource it does not have permission to access.",
+          "command": "kubectl describe pod cache-3b4c5d6e7-v1b2n -n platform",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe killing a healthy-but-slow container",
+          "why": "While a failing liveness probe could cause a container to be restarted, it is less likely to be the direct cause of a permission denied error.",
+          "command": "kubectl get events -n platform --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "OOMKilled",
+          "why": "There is no indication that the container is being OOMKilled, and the error message suggests a permission issue rather than a resource exhaustion issue.",
+          "command": "kubectl describe pod cache-3b4c5d6e7-v1b2n -n platform",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "crash-bad-config",
+      "title": "Config file fails to parse",
+      "category": "CrashLoopBackOff",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Application error on startup",
+          "why": "Error loading /etc/gateway/config.yaml suggests a configuration issue",
+          "command": "kubectl logs gateway-9e8d7c6b5-p4o3i -n gateway --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Wrong command or args in the pod spec",
+          "why": "Exit code 1 could indicate an incorrect command or argument",
+          "command": "kubectl describe pod gateway-9e8d7c6b5-p4o3i -n gateway",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Failing liveness probe",
+          "why": "No evidence of liveness probe failure, but possible if probe is not properly configured",
+          "command": "kubectl describe pod gateway-9e8d7c6b5-p4o3i -n gateway",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "OOMKilled",
+          "why": "No evidence of out-of-memory errors, but possible if not properly monitored",
+          "command": "kubectl get events -n gateway --sort-by=.lastTimestamp",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "oom-limit-low",
+      "title": "Memory limit far below working set",
+      "category": "OOMKilled",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Memory limit set lower than the real working set",
+          "why": "OOMKilled and CrashLoopBackOff suggest the pod is running out of memory",
+          "command": "kubectl describe pod checkout-5c8d6f7b9d-m7q2w -n shop",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Memory leak or unbounded cache",
+          "why": "Repeated restarts could indicate a memory leak",
+          "command": "kubectl top pod checkout-5c8d6f7b9d-m7q2w -n shop --containers",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Traffic spike or large request batch",
+          "why": "No information about recent traffic patterns",
+          "command": "kubectl logs checkout-5c8d6f7b9d-m7q2w -n shop --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "JVM or runtime heap sized larger than the container limit",
+          "why": "No information about the application's runtime configuration",
+          "command": "kubectl describe pod checkout-5c8d6f7b9d-m7q2w -n shop",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "oom-java-heap",
+      "title": "JVM heap larger than the container limit",
+      "category": "OOMKilled",
+      "categoryOk": true,
+      "rank": 2,
+      "hypotheses": [
+        {
+          "title": "Insufficient memory limit",
+          "why": "The pod is experiencing an OutOfMemoryError, which could be due to the memory limit being set too low for the application's needs",
+          "command": "kubectl describe pod inventory-7b6a5c4d3-w9e8r -n supply",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Memory leak or unbounded cache",
+          "why": "The Java heap space issue could be caused by a memory leak or unbounded cache in the application",
+          "command": "kubectl top pod inventory-7b6a5c4d3-w9e8r -n supply --containers",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Traffic spike or large request batch",
+          "why": "A sudden increase in traffic or a large request batch could cause the application to consume more memory than usual",
+          "command": "kubectl logs inventory-7b6a5c4d3-w9e8r -n supply --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "JVM or runtime heap size mismatch",
+          "why": "The JVM or runtime heap size might be larger than the container limit, causing the OutOfMemoryError",
+          "command": "kubectl describe pod inventory-7b6a5c4d3-w9e8r -n supply",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "oom-batch-job",
+      "title": "Batch job loads a huge file into memory",
+      "category": "OOMKilled",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Memory limit set lower than the real working set",
+          "why": "The pod was OOMKilled due to exceeding its 1Gi memory limit while loading a large file",
+          "command": "kubectl describe pod nightly-export-29384-x7k2p -n data",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Memory leak or unbounded cache",
+          "why": "A large file was loaded into memory, potentially causing a memory leak or unbounded cache",
+          "command": "kubectl top pod nightly-export-29384-x7k2p -n data --containers",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Traffic spike or large request batch",
+          "why": "There is no indication of a traffic spike or large request batch, but it's possible",
+          "command": "kubectl logs nightly-export-29384-x7k2p -n data --previous",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "JVM or runtime heap sized larger than the container limit",
+          "why": "There is no indication of a JVM or runtime issue, but it's possible",
+          "command": "kubectl describe pod nightly-export-29384-x7k2p -n data",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "pull-not-found",
+      "title": "Image tag does not exist",
+      "category": "ImagePullBackOff",
+      "categoryOk": true,
+      "rank": 2,
+      "hypotheses": [
+        {
+          "title": "Private registry without imagePullSecrets",
+          "why": "The error ImagePullBackOff often occurs when Kubernetes cannot authenticate with the registry.",
+          "command": "kubectl describe pod reports-6b7f9c4d58-h9z4t -n analytics",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Tag or repository does not exist",
+          "why": "A typo in the image name or an unpushed image can cause this error.",
+          "command": "kubectl get pod reports-6b7f9c4d58-h9z4t -n analytics -o jsonpath='{.spec.containers[*].image}'",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Registry unreachable from the node",
+          "why": "Network issues or rate limits can prevent the node from reaching the registry.",
+          "command": "kubectl get pod reports-6b7f9c4d58-h9z4t -n analytics -o jsonpath='{.status.containerStatuses[*].state.waiting.message}'",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Expired credential",
+          "why": "If the credential used to access the registry has expired, it can cause authentication issues.",
+          "command": "kubectl get serviceaccount default -n analytics -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "pull-unauthorized",
+      "title": "Private registry without credentials",
+      "category": "ImagePullBackOff",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Private registry without imagePullSecrets",
+          "why": "The error message mentions authorization issues, which is consistent with a private registry without proper credentials",
+          "command": "kubectl get serviceaccount default -n finance -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Expired credential",
+          "why": "If the credential has expired, it would also result in an authorization issue",
+          "command": "kubectl describe pod ledger-5a4b3c2d1-t6y7u -n finance",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Registry unreachable from the node",
+          "why": "Network issues or rate limits could prevent the node from reaching the registry",
+          "command": "kubectl get pod ledger-5a4b3c2d1-t6y7u -n finance -o jsonpath='{.spec.containers[*].image}'",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Tag or repository does not exist",
+          "why": "While possible, the error message specifically mentions authorization issues, making this less likely",
+          "command": "kubectl describe pod ledger-5a4b3c2d1-t6y7u -n finance",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "pull-rate-limit",
+      "title": "Docker Hub pull rate limit",
+      "category": "ImagePullBackOff",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Rate limit error due to excessive pulls",
+          "why": "The error message mentions a pull rate limit error, which suggests that the node is making too many requests to the registry.",
+          "command": "kubectl describe pod cron-runner-4d3c2b1a0-o9i8u -n ops",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Private registry without imagePullSecrets",
+          "why": "The image is being pulled from docker.io, which has rate limiting, but it's also possible that the image is actually located in a private registry that requires credentials.",
+          "command": "kubectl get pod cron-runner-4d3c2b1a0-o9i8u -n ops -o jsonpath='{.spec.containers[*].image}'",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Registry unreachable from the node",
+          "why": "The node may not be able to reach the registry due to network issues, which could be causing the pull error.",
+          "command": "kubectl get serviceaccount default -n ops -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Tag or repository does not exist",
+          "why": "The error message specifically mentions a rate limit error, which suggests that the repository and tag do exist, but are being pulled too frequently.",
+          "command": "kubectl get pod cron-runner-4d3c2b1a0-o9i8u -n ops -o jsonpath='{.spec.containers[*].image}'",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "sched-insufficient-cpu",
+      "title": "No node has enough CPU",
+      "category": "FailedScheduling",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Insufficient CPU resources on available nodes",
+          "why": "The error message directly states that there are insufficient CPU resources on available nodes",
+          "command": "kubectl describe pod batch-worker-84f6d9c7b6-t5r8k -n jobs",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node taints without matching tolerations",
+          "why": "Node taints can prevent pods from being scheduled if there are no matching tolerations",
+          "command": "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node affinity or selector mismatch",
+          "why": "If the pod has a node affinity or selector that doesn't match any available nodes, it will not be scheduled",
+          "command": "kubectl describe pod batch-worker-84f6d9c7b6-t5r8k -n jobs",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Unbound or unavailable PersistentVolumeClaim",
+          "why": "While a PersistentVolumeClaim issue could prevent a pod from being scheduled, the error message does not directly suggest this",
+          "command": "kubectl get pvc -n jobs",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "sched-taint",
+      "title": "Nodes are tainted and the pod does not tolerate it",
+      "category": "FailedScheduling",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Node taints without matching tolerations",
+          "why": "The error message mentions untolerated taints on available nodes",
+          "command": "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Not enough CPU or memory on any node for the requests",
+          "why": "This is a common cause of failed scheduling",
+          "command": "kubectl describe pod trainer-7f6e5d4c3-b2a1z -n ml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "nodeSelector or affinity matching no node",
+          "why": "There is no direct evidence to support this hypothesis",
+          "command": "kubectl describe pod trainer-7f6e5d4c3-b2a1z -n ml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "PersistentVolumeClaim not bound or in another zone",
+          "why": "The error message does not mention PVC issues",
+          "command": "kubectl get pvc -n ml",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "sched-pvc-unbound",
+      "title": "PVC is not bound",
+      "category": "FailedScheduling",
+      "categoryOk": true,
+      "rank": 2,
+      "hypotheses": [
+        {
+          "title": "Insufficient CPU or memory on nodes",
+          "why": "The error message mentions no available nodes for scheduling, which could be due to insufficient resources",
+          "command": "kubectl describe nodes",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Unbound PersistentVolumeClaim",
+          "why": "The error message explicitly mentions unbound immediate PersistentVolumeClaims",
+          "command": "kubectl get pvc -n data",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node taints without matching tolerations",
+          "why": "Node taints could prevent the pod from being scheduled on any node",
+          "command": "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node selector or affinity matching no node",
+          "why": "This is a possible cause, but the error message does not provide direct evidence for it",
+          "command": "kubectl describe pod db-0 -n data",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "sched-node-selector",
+      "title": "Node selector matches no node",
+      "category": "FailedScheduling",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Node affinity or selector mismatch",
+          "why": "The error message explicitly mentions node affinity or selector as the reason for failed scheduling",
+          "command": "kubectl describe pod ingest-6e5d4c3b2-c1d2e -n pipeline",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Insufficient CPU or memory on nodes",
+          "why": "The pod is in a Pending state due to failed scheduling, which could be due to lack of resources on the nodes",
+          "command": "kubectl describe nodes",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node taints without matching tolerations",
+          "why": "Node taints can prevent pods from scheduling if there are no matching tolerations",
+          "command": "kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Unbound or zone-mismatched PersistentVolumeClaim",
+          "why": "While a possible cause, there is no direct evidence in the error message to support this hypothesis",
+          "command": "kubectl get pvc -n pipeline",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "evicted-disk",
+      "title": "Pod evicted for ephemeral storage",
+      "category": "Evicted",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Low ephemeral storage on node",
+          "why": "The error message directly mentions the node being low on ephemeral-storage",
+          "command": "kubectl describe node worker-5",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Pod using more ephemeral storage than expected",
+          "why": "The pod was evicted due to low ephemeral storage, which could be caused by the pod using more storage than expected",
+          "command": "kubectl describe pod uploader-5d4c3b2a1-f7g8h -n media",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Low QoS class pod evicted first",
+          "why": "The pod could have a low QoS class, making it more likely to be evicted first",
+          "command": "kubectl describe pod uploader-5d4c3b2a1-f7g8h -n media",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node memory or PID pressure",
+          "why": "Although node pressure can cause evictions, the error message specifically mentions ephemeral storage",
+          "command": "kubectl describe node worker-5",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "mount-multi-attach",
+      "title": "Volume still attached to another node",
+      "category": "FailedMount",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Volume still attached to another node",
+          "why": "Multi-Attach error is a common indicator of this issue",
+          "command": "kubectl get pvc pvc-8f2a1b3c -n web -o yaml",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "PVC not bound or storage class missing",
+          "why": "PVC binding issues can cause attachment problems",
+          "command": "kubectl describe pvc pvc-8f2a1b3c -n web",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "CSI driver unhealthy",
+          "why": "Unhealthy CSI drivers can cause volume attachment issues",
+          "command": "kubectl get pods -n kube-system | grep -i csi",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Missing Secret or ConfigMap used as a volume",
+          "why": "Less likely to cause a Multi-Attach error",
+          "command": "kubectl describe pod wordpress-6c5b4a3d2-j3k4l -n web",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "probe-readiness",
+      "title": "Readiness probe cannot connect",
+      "category": "ProbeFailed",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Probe path or port wrong",
+          "why": "Connection refusal on the specified port suggests a potential mismatch in the probe configuration",
+          "command": "kubectl describe pod frontend-7a6b5c4d3-l5m6n -n web",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "App slower to start than initialDelaySeconds",
+          "why": "If the application takes longer to start than the initial delay, the probe will fail",
+          "command": "kubectl logs frontend-7a6b5c4d3-l5m6n -n web",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Timeout too tight under load",
+          "why": "If the timeout is too short, the probe may fail even if the application is running",
+          "command": "kubectl describe pod frontend-7a6b5c4d3-l5m6n -n web",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Dependency down making the health endpoint fail",
+          "why": "While possible, there's no direct evidence to suggest a dependency issue at this point",
+          "command": "kubectl exec frontend-7a6b5c4d3-l5m6n -n web -- wget -qO- http://localhost:3000",
+          "readOnly": false,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "node-notready",
+      "title": "Node stopped posting status",
+      "category": "NodeNotReady",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Kubelet crashed or cannot reach the API server",
+          "why": "Kubelet is responsible for posting node status, and its failure or inability to reach the API server would directly cause the NodeNotReady condition",
+          "command": "kubectl describe node worker-7",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Network partition or CNI failure on the node",
+          "why": "Network issues could prevent the Kubelet from posting node status, and CNI failures could impact pod communication and Kubelet functionality",
+          "command": "kubectl get pods -A --field-selector spec.nodeName=worker-7",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node out of memory, disk or PIDs",
+          "why": "Resource exhaustion could cause the Kubelet to fail or become unresponsive, leading to the NodeNotReady condition",
+          "command": "kubectl get nodes -o wide",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Instance stopped or rebooting",
+          "why": "This would be an unusual cause for the Kubelet to stop posting node status without other symptoms or notifications",
+          "command": "kubectl get nodes -o wide",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "node-disk-pressure",
+      "title": "Node under disk pressure",
+      "category": "NodeNotReady",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Disk pressure causing node unavailability",
+          "why": "Node is reported as not ready due to disk pressure",
+          "command": "kubectl describe node worker-8",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Unhealthy PLEG due to Kubelet issue",
+          "why": "Unhealthy PLEG can be caused by Kubelet problems",
+          "command": "kubectl get pods -A --field-selector spec.nodeName=worker-8",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Node out of memory or PIDs",
+          "why": "Common cause of node unavailability",
+          "command": "kubectl get nodes -o wide",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Network partition or CNI failure on the node",
+          "why": "Less likely but possible cause of node unavailability",
+          "command": "kubectl describe node worker-8",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "config-missing-secret",
+      "title": "Referenced secret does not exist",
+      "category": "ConfigError",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Missing Secret",
+          "why": "The error message mentions a CreateContainerConfigError due to a missing secret named payments-db",
+          "command": "kubectl get secret payments-db -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Absent Key in Secret",
+          "why": "The secret might exist but the key referenced by the pod might be absent",
+          "command": "kubectl describe pod payments-api -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Invalid Security Context",
+          "why": "An invalid securityContext or runAsNonRoot with a root image could cause a CreateContainerConfigError",
+          "command": "kubectl describe pod payments-api -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "ConfigMap Issue",
+          "why": "Although less likely, a ConfigMap issue could potentially cause a similar error",
+          "command": "kubectl get configmap -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "config-missing-configmap",
+      "title": "Referenced ConfigMap does not exist",
+      "category": "ConfigError",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "ConfigMap does not exist in the namespace",
+          "why": "The error message mentions a missing configmap named mailer-config",
+          "command": "kubectl get configmap mailer-config -n comms",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Key referenced by env or volume is absent",
+          "why": "The error is a CreateContainerConfigError which could be caused by a missing key",
+          "command": "kubectl describe pod mailer-6c5d4e3f2-s4t5u -n comms",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Invalid securityContext or runAsNonRoot with a root image",
+          "why": "This is a known cause of config errors, but the error message does not directly suggest this",
+          "command": "kubectl describe pod mailer-6c5d4e3f2-s4t5u -n comms",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "svc-no-endpoints",
+      "title": "Service selector matches no pods",
+      "category": "ServiceNoEndpoints",
+      "categoryOk": true,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Service selector does not match any pod labels",
+          "why": "This is a common cause of a service having no endpoints",
+          "command": "kubectl describe svc web -n shop",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Matching pods are not Ready",
+          "why": "Pods that are not ready are not considered for service endpoints",
+          "command": "kubectl get pods -n shop -l <label_key>=<label_value> --show-labels",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "targetPort differs from the container port",
+          "why": "A mismatch between targetPort and container port can prevent endpoint creation",
+          "command": "kubectl describe svc web -n shop",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "No pods match the service selector due to other label mismatch",
+          "why": "Other label mismatches can also prevent endpoint creation",
+          "command": "kubectl get pods -n shop -l <label_key>=<label_value> --show-labels",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "dns-no-such-host",
+      "title": "In-cluster DNS lookup fails",
+      "category": "ServiceNoEndpoints",
+      "categoryOk": false,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Service selector does not match any pod labels",
+          "why": "DNS lookup failure could be due to the service not being able to find any matching pods",
+          "command": "kubectl get endpoints payments-db -n <ns>",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Matching pods are not Ready",
+          "why": "If matching pods exist but are not ready, the service will not have endpoints",
+          "command": "kubectl get pods -n <ns> -l <key>=<value> --show-labels",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "targetPort differs from the container port",
+          "why": "A port mismatch could cause connection issues, but would not typically cause a DNS lookup failure",
+          "command": "kubectl describe svc payments-db -n <ns>",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "No pods running in the namespace",
+          "why": "If there are no pods running in the namespace, the service will not have endpoints",
+          "command": "kubectl get pods -n <ns>",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    },
+    {
+      "id": "rbac-forbidden",
+      "title": "ServiceAccount lacks RBAC permission",
+      "category": "ConfigError",
+      "categoryOk": false,
+      "rank": 1,
+      "hypotheses": [
+        {
+          "title": "Missing or Insufficient RoleBinding",
+          "why": "The error message indicates a forbidden action, suggesting a potential issue with the service account's permissions.",
+          "command": "kubectl get rolebinding -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Invalid SecurityContext",
+          "why": "An invalid securityContext or runAsNonRoot with a root image could cause issues with the service account's ability to list pods.",
+          "command": "kubectl describe pod <pod> -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "ConfigMap or Secret Issue",
+          "why": "Although ConfigMap or Secret issues are known causes, the error message specifically mentions a forbidden action, making this hypothesis less likely.",
+          "command": "kubectl get configmap -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        },
+        {
+          "title": "Key Referenced by Env or Volume is Absent",
+          "why": "Similar to the ConfigMap or Secret issue, the error message does not directly suggest a problem with keys referenced by env or volume.",
+          "command": "kubectl get secret -n payments",
+          "readOnly": true,
+          "ungrounded": []
+        }
+      ]
+    }
+  ]
+}

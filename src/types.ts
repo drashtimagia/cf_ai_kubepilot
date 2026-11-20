@@ -26,10 +26,10 @@ export const TIMELINE_KINDS = [
 export type TimelineKind = (typeof TIMELINE_KINDS)[number];
 
 /**
- * Where an entry came from. "user" and "tool" are facts we were given;
+ * Where an entry came from. "user" and "alert" are facts we were given;
  * "agent" and "workflow" entries are LLM output and are never evidence.
  */
-export type TimelineSource = "user" | "agent" | "workflow";
+export type TimelineSource = "user" | "agent" | "workflow" | "alert";
 
 export interface TimelineEntry {
   id: number;
@@ -58,11 +58,17 @@ export const DIAGNOSIS_STEPS = [
   { id: "classify", label: "Classify failure" },
   { id: "context", label: "Gather context" },
   { id: "hypotheses", label: "Rank hypotheses" },
+  { id: "review", label: "Review cluster-changing steps" },
   { id: "save", label: "Write to timeline" }
 ] as const;
 export type DiagnosisStepId = (typeof DIAGNOSIS_STEPS)[number]["id"];
 
-export type StepStatus = "pending" | "running" | "complete" | "error";
+export type StepStatus =
+  | "pending"
+  | "running"
+  | "waiting"
+  | "complete"
+  | "error";
 
 export interface DiagnosisStep {
   id: DiagnosisStepId;
@@ -88,6 +94,8 @@ export interface DiagnosisResult {
   signals: string[];
   /** Ranked, most likely first. These are LLM hypotheses, not facts. */
   hypotheses: Hypothesis[];
+  /** Cluster-changing suggestions left out because approval was not given. */
+  withheld: number;
   incidentId: string;
 }
 
