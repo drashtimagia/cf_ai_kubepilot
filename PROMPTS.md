@@ -123,3 +123,22 @@ Every prompt given to the AI coding assistant while building KubePilot, verbatim
 > Then deploy, and list the weaknesses that remain, ranked by how much a reviewer would care.
 
 **What changed:** Review pass: removed leftover starter code and the bloated .gitignore, audited for secrets (none), friendly Workers AI error and rate-limit handling, server-side error logging, output-token limit, extracted and tested message helpers, rewrote the README (live URL, demo path, Mermaid diagram, component map, trade-offs), then deployed. Live testing on the deployed URL found and fixed two more bugs: the model could spend every step on tool calls and never answer (the last step is now forced to be text), and long inline commands overflowed chat bubbles on phones.
+
+## Prompt 11
+
+> Move this session to a folder
+
+**What changed:** Copied the project to `~/Documents/cf_ai_kubepilot` and moved the session there (the first folder picker was cancelled; no code changes).
+
+## Prompt 12
+
+> is the project ready? we need to send github repo link
+
+**What changed:** Initialised git, made the first commit, created the public repo https://github.com/drashtimagia/cf_ai_kubepilot and pushed `main`. No code changes.
+
+## Prompt 13
+
+> Note: AI-assisted coding is encouraged, but you have to submit prompt history.
+> how to send this
+
+**What changed:** Logged prompts 11 to 13 so the history in the repo is complete; no code changes.
