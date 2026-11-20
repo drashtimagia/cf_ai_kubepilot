@@ -181,3 +181,9 @@ Every prompt given to the AI coding assistant while building KubePilot, verbatim
 > do all
 
 **What changed:** Added a live evaluation harness (28 labelled incidents, `npm run eval`, results in `eval/RESULTS.md`: correct cause in the top 3 for 26/28, 0/111 hypotheses with an invented identifier). The eval exposed a parser bug (exit 137 was always called OOMKilled), fixed. Added one agent per cluster with per-cluster tokens, an Alertmanager webhook that opens incidents and starts diagnoses, and a `kubepilot` CLI. Suggested commands now get `<ns>`/`<pod>` filled from the evidence, with an `ns/pod` normalisation found by testing the webhook. Added an opt-in `waitForApproval` step (approve and reject both exercised live, by temporarily forcing the pause). README gained evaluation, alerts and CLI, and design decisions sections. Not deployed. I cannot record a screen video, so that item is not done.
+
+## Prompt 16
+
+> Deploy and push
+
+**What changed:** Set the `WEBHOOK_SECRET` Worker secret, deployed to Cloudflare, verified the live site and webhook, and pushed to GitHub.
