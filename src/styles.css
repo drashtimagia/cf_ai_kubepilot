@@ -1,0 +1,23 @@
+@import "tailwindcss";
+@import "@cloudflare/kumo/styles/tailwind";
+@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@source "../node_modules/streamdown/dist/*.js";
+@source "../node_modules/@streamdown/code/dist/*.js";
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+/* Long commands must wrap inside chat bubbles on narrow screens. */
+.sd-theme {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.sd-theme :not(pre) > code {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
