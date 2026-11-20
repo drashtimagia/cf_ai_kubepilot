@@ -142,3 +142,9 @@ Every prompt given to the AI coding assistant while building KubePilot, verbatim
 > how to send this
 
 **What changed:** Logged prompts 11 to 13 so the history in the repo is complete; no code changes.
+
+## Prompt 14
+
+> https://cf-ai-kubepilot.drashtimagia02.workers.dev/ add this to my portfolio as projects on vercel
+
+**What changed:** No change to this repo. Added a KubePilot entry to `data/projects.ts` in the separate `portfolio-drashti` repo and pushed it, which triggered the Vercel deploy.
